@@ -5,6 +5,6 @@ public class ClaimImage
     public string? Caption { get; set; } = string.Empty;
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
 
-    public Claim? Claim { get; set; }
+    public ClaimT? Claim { get; set; }
     public Guid ClaimId { get; set; }
 }

@@ -4,7 +4,7 @@ using System.Linq;
 
 public static class ClaimHasher
 {
-    public static string GenerateClaimHash(Claim claim)
+    public static string GenerateClaimHash(ClaimT claim)
     {
         // Sort image URLs (or hashes) so order doesn’t affect result
         var imageParts = claim.Images
