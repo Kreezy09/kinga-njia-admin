@@ -1,3 +1,5 @@
+namespace NjianiAPI.Models;
+
 public class ClaimImage
 {
     public Guid Id { get; set; } = Guid.NewGuid();

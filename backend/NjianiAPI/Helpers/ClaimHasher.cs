@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Linq;
+using NjianiAPI.Models;
 
 public static class ClaimHasher
 {

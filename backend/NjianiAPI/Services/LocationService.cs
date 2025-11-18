@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NjianiAPI.Data;
+using NjianiAPI.Models;
 
 public class LocationService : ILocationService
 {

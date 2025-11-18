@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using NjianiAPI.Data;
+using NjianiAPI.Models;
 
 public class ClaimService : IClaimService
 {

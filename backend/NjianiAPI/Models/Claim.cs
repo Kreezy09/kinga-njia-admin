@@ -1,3 +1,5 @@
+namespace NjianiAPI.Models;
+
 public class ClaimT
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -6,8 +8,8 @@ public class ClaimT
     public string? Description { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-    public string Status { get; set; } = "Pending";
-    public string? Severity { get; set; } = string.Empty;
+    public ClaimStatus Status { get; set; } = ClaimStatus.Pending;
+    public ClaimSeverity? Severity { get; set; }
     public string? Comment { get; set; } = string.Empty;
 
     public User? User { get; set; }

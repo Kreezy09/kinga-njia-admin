@@ -1,3 +1,5 @@
+using NjianiAPI.Models;
+
 public interface IClaimService
 {
     Task<ClaimT?> GetClaimByIdAsync(Guid claimId);

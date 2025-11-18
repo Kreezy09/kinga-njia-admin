@@ -2,7 +2,7 @@ public class ClaimCreateDto
 {
     public string Type { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public string Severity { get; set; } = string.Empty;
+    public ClaimSeverity? Severity { get; set; }
     public string Comment { get; set; } = string.Empty;
     public List<IFormFile>? Images { get; set; }
     public Guid LocationId { get; set; }
@@ -30,8 +30,8 @@ public class ClaimResponseDto
     public string HashValue { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public string Severity { get; set; } = string.Empty;
+    public ClaimStatus Status { get; set; }
+    public ClaimSeverity? Severity { get; set; }
     public string Comment { get; set; } = string.Empty;
     public Guid LocationId { get; set; }
     public Guid UserId { get; set; }
