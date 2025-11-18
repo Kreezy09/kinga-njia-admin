@@ -5,6 +5,9 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using NjianiAPI.Data;
 using Microsoft.OpenApi.Models;
+using System.IdentityModel.Tokens.Jwt;
+
+JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,9 +15,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<NjianiDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Add Cloudinary configuration
+builder.Services.Configure<CloudinarySettings>(
+    builder.Configuration.GetSection("Cloudinary"));
+
 //jwt authentication setup
-var jwtKey = builder.Configuration["Jwt:Key"];
-var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("JWT Key is not configured");
+var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("JWT Issuer is not configured");
+var jwtAudience = builder.Configuration["Jwt:Audience"] ?? throw new InvalidOperationException("JWT Audience is not configured");
+
 
 builder.Services.AddAuthentication(options =>
 {
@@ -29,12 +38,29 @@ builder.Services.AddAuthentication(options =>
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
         ValidIssuer = jwtIssuer,
-        ValidAudience = jwtIssuer,
+        ValidAudience = jwtAudience,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
     };
+    options.Events = new JwtBearerEvents
+        {
+            OnAuthenticationFailed = context =>
+            {
+                Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                return Task.CompletedTask;
+            },
+            OnTokenValidated = context =>
+            {
+                Console.WriteLine("Token validated successfully");
+                var claims = context.Principal?.Claims.Select(c => $"{c.Type}: {c.Value}");
+                Console.WriteLine("Claims: " + string.Join(", ", claims ?? Array.Empty<string>()));
+                return Task.CompletedTask;
+            }
+        };
 });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddControllers();
 
