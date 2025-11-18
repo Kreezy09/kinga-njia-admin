@@ -32,6 +32,13 @@ public class ClaimController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateClaim([FromForm] ClaimCreateDto claimCreateDto)
     {
+        // Get userId from authenticated user's claims
+        var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrEmpty(userId))
+        {
+            return Unauthorized();
+        }
+        claimCreateDto.UserId = Guid.Parse(userId);
         var createdClaim = await _claimService.CreateClaimAsync(claimCreateDto);
         return CreatedAtAction(nameof(GetClaimById), new { id = createdClaim.Id }, createdClaim);
     }
