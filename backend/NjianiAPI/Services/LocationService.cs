@@ -30,4 +30,39 @@ public class LocationService : ILocationService
             Longitude = location.Longitude,
         };
     }
+
+    public async Task<LocationResponseDto?> GetLocationByIdAsync(Guid locationId)
+    {
+        var location = await _context.Locations
+            .Include(l => l.Claims)
+            .FirstOrDefaultAsync(l => l.Id == locationId);
+
+        if (location == null)
+        {
+            return null;
+        }
+
+        return new LocationResponseDto
+        {
+            Id = location.Id,
+            Name = location.Name,
+            Latitude = location.Latitude,
+            Longitude = location.Longitude,
+        };
+    }
+
+    public async Task<List<LocationResponseDto>> GetAllLocationsAsync()
+    {
+        var locations = await _context.Locations
+            .Include(l => l.Claims)
+            .ToListAsync();
+
+        return locations.Select(location => new LocationResponseDto
+        {
+            Id = location.Id,
+            Name = location.Name,
+            Latitude = location.Latitude,
+            Longitude = location.Longitude,
+        }).ToList();
+    }
 }
