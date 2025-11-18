@@ -45,7 +45,7 @@ public class ClaimController : ControllerBase
         }
         // claimCreateDto.UserId = Guid.Parse(userId);
         var createdClaim = await _claimService.CreateClaimAsync(claimCreateDto, Guid.Parse(userId));
-        return CreatedAtAction(nameof(GetClaimById), new { id = createdClaim.Id });
+        return CreatedAtAction(nameof(GetClaimById), new { id = createdClaim.Id }, createdClaim);
     }
 
     [HttpPut("{id}")]
