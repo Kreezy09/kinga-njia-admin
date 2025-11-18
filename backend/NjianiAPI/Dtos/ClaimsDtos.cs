@@ -4,7 +4,7 @@ public class ClaimCreateDto
     public string Description { get; set; } = string.Empty;
     public string Severity { get; set; } = string.Empty;
     public string Comment { get; set; } = string.Empty;
-    public List<ClaimImageCreateDto>? Images { get; set; }
+    public List<IFormFile>? Images { get; set; }
     public Guid LocationId { get; set; }
     public Guid UserId { get; set; }
 }

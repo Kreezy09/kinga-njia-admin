@@ -5,10 +5,12 @@ using NjianiAPI.Data;
 public class ClaimService : IClaimService
 {
     private readonly NjianiDbContext _context;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public ClaimService(NjianiDbContext context)
+    public ClaimService(NjianiDbContext context, ICloudinaryService cloudinaryService)
     {
         _context = context;
+        _cloudinaryService = cloudinaryService;
     }
 
     public async Task<ClaimT?> GetClaimByIdAsync(Guid claimId)
@@ -46,16 +48,26 @@ public class ClaimService : IClaimService
             _context.Claims.Add(claim);
             await _context.SaveChangesAsync();
 
-            // Create claim images
+            // Upload images to Cloudinary and create claim images
             if (claimCreateDto.Images != null && claimCreateDto.Images.Any())
             {
-                var claimImages = claimCreateDto.Images.Select(imageDto => new ClaimImage
+                var claimImages = new List<ClaimImage>();
+
+                foreach (var imageFile in claimCreateDto.Images)
                 {
-                    ClaimId = claim.Id,
-                    ImageUrl = imageDto.ImageUrl,
-                    Caption = imageDto.Caption,
-                    UploadedAt = DateTime.UtcNow
-                }).ToList();
+                    // Upload to Cloudinary
+                    var imageUrl = await _cloudinaryService.UploadImageAsync(imageFile);
+
+                    var claimImage = new ClaimImage
+                    {
+                        ClaimId = claim.Id,
+                        ImageUrl = imageUrl,
+                        Caption = null,
+                        UploadedAt = DateTime.UtcNow
+                    };
+
+                    claimImages.Add(claimImage);
+                }
 
                 _context.ClaimImages.AddRange(claimImages);
                 await _context.SaveChangesAsync();

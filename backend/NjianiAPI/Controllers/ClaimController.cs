@@ -30,7 +30,7 @@ public class ClaimController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> CreateClaim([FromBody] ClaimCreateDto claimCreateDto)
+    public async Task<IActionResult> CreateClaim([FromForm] ClaimCreateDto claimCreateDto)
     {
         var createdClaim = await _claimService.CreateClaimAsync(claimCreateDto);
         return CreatedAtAction(nameof(GetClaimById), new { id = createdClaim.Id }, createdClaim);
