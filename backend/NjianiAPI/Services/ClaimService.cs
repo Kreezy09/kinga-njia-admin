@@ -14,35 +14,38 @@ public class ClaimService : IClaimService
         _cloudinaryService = cloudinaryService;
     }
 
-    public async Task<ClaimT?> GetClaimByIdAsync(Guid claimId)
+    public async Task<ClaimResponseDto?> GetClaimByIdAsync(Guid claimId)
     {
-        return await _context.Claims
+        var claim = await _context.Claims
             .Include(c => c.Images)
             .FirstOrDefaultAsync(c => c.Id == claimId);
+
+        return claim == null ? null : MapToResponseDto(claim);
     }
 
-    public async Task<List<ClaimT>> GetAllClaimsAsync()
+    public async Task<List<ClaimResponseDto>> GetAllClaimsAsync()
     {
-        return await _context.Claims
+        var claims = await _context.Claims
             .Include(c => c.Images)
             .ToListAsync();
+
+        return claims.Select(MapToResponseDto).ToList();
     }
 
-    public async Task<ClaimT> CreateClaimAsync(ClaimCreateDto claimCreateDto)
+    public async Task<ClaimResponseDto> CreateClaimAsync(ClaimCreateDto claimCreateDto, Guid userId)
     {
         using var transaction = await _context.Database.BeginTransactionAsync();
 
         try
         {
-
             var claim = new ClaimT
             {
                 Type = claimCreateDto.Type,
                 Description = claimCreateDto.Description,
-                Severity = claimCreateDto.Severity,
-                Comment = claimCreateDto.Comment,
+                Severity = claimCreateDto.Severity ?? ClaimSeverity.Low,
+                Comment = claimCreateDto.Comment ?? string.Empty,
                 LocationId = claimCreateDto.LocationId,
-                UserId = claimCreateDto.UserId,
+                UserId = userId,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -56,7 +59,6 @@ public class ClaimService : IClaimService
 
                 foreach (var imageFile in claimCreateDto.Images)
                 {
-                    // Upload to Cloudinary
                     var imageUrl = await _cloudinaryService.UploadImageAsync(imageFile);
 
                     var claimImage = new ClaimImage
@@ -88,7 +90,7 @@ public class ClaimService : IClaimService
 
             await transaction.CommitAsync();
 
-            return claimWithImages;
+            return MapToResponseDto(claimWithImages);
         }
         catch
         {
@@ -122,5 +124,30 @@ public class ClaimService : IClaimService
         await _context.SaveChangesAsync();
 
         return true;
+    }
+
+    private ClaimResponseDto MapToResponseDto(ClaimT claim)
+    {
+        return new ClaimResponseDto
+        {
+            Id = claim.Id,
+            Type = claim.Type,
+            Description = claim.Description,
+            HashValue = claim.HashValue,
+            CreatedAt = claim.CreatedAt,
+            UpdatedAt = claim.UpdatedAt,
+            Status = claim.Status,
+            Severity = claim.Severity,
+            Comment = claim.Comment ?? string.Empty,
+            LocationId = claim.LocationId,
+            UserId = claim.UserId,
+            Images = claim.Images?.Select(img => new ClaimImageResponseDto
+            {
+                Id = img.Id,
+                ImageUrl = img.ImageUrl,
+                Caption = img.Caption,
+                UploadedAt = img.UploadedAt
+            }).ToList() ?? new List<ClaimImageResponseDto>()
+        };
     }
 }
