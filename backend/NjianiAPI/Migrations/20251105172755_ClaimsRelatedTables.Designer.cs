@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using NjianiAPI.Data;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace NjianiAPI.Migrations
 {
     [DbContext(typeof(NjianiDbContext))]
-    partial class NjianiDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251105172755_ClaimsRelatedTables")]
+    partial class ClaimsRelatedTables
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -22,7 +25,7 @@ namespace NjianiAPI.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("NjianiAPI.Models.ClaimImage", b =>
+            modelBuilder.Entity("ClaimImage", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -48,7 +51,7 @@ namespace NjianiAPI.Migrations
                     b.ToTable("ClaimImages");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.ClaimT", b =>
+            modelBuilder.Entity("ClaimT", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -70,11 +73,12 @@ namespace NjianiAPI.Migrations
                     b.Property<Guid>("LocationId")
                         .HasColumnType("uuid");
 
-                    b.Property<int?>("Severity")
-                        .HasColumnType("integer");
+                    b.Property<string>("Severity")
+                        .HasColumnType("text");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -95,7 +99,7 @@ namespace NjianiAPI.Migrations
                     b.ToTable("Claims");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.Location", b =>
+            modelBuilder.Entity("Location", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -116,7 +120,7 @@ namespace NjianiAPI.Migrations
                     b.ToTable("Locations");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.User", b =>
+            modelBuilder.Entity("User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -138,17 +142,18 @@ namespace NjianiAPI.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<int>("Role")
-                        .HasColumnType("integer");
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.ClaimImage", b =>
+            modelBuilder.Entity("ClaimImage", b =>
                 {
-                    b.HasOne("NjianiAPI.Models.ClaimT", "Claim")
+                    b.HasOne("ClaimT", "Claim")
                         .WithMany("Images")
                         .HasForeignKey("ClaimId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -157,15 +162,15 @@ namespace NjianiAPI.Migrations
                     b.Navigation("Claim");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.ClaimT", b =>
+            modelBuilder.Entity("ClaimT", b =>
                 {
-                    b.HasOne("NjianiAPI.Models.Location", "Location")
+                    b.HasOne("Location", "Location")
                         .WithMany("Claims")
                         .HasForeignKey("LocationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("NjianiAPI.Models.User", "User")
+                    b.HasOne("User", "User")
                         .WithMany("Claims")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -176,17 +181,17 @@ namespace NjianiAPI.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.ClaimT", b =>
+            modelBuilder.Entity("ClaimT", b =>
                 {
                     b.Navigation("Images");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.Location", b =>
+            modelBuilder.Entity("Location", b =>
                 {
                     b.Navigation("Claims");
                 });
 
-            modelBuilder.Entity("NjianiAPI.Models.User", b =>
+            modelBuilder.Entity("User", b =>
                 {
                     b.Navigation("Claims");
                 });
