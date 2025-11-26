@@ -38,4 +38,27 @@ public class AnalyticsService : IAnalyticsService
                 ChangeType = changeType
             };
         }
+    private async Task<List<RecentClaimDto>> GetRecentClaimsAsync()
+    {
+        var recentClaims = await _context.Claims
+            .Include(c => c.Location)
+            .OrderByDescending(c => c.CreatedAt)
+            .Take(5)
+            .Select(c => new
+            {
+                c.Id,
+                LocationName = c.Location != null ? c.Location.Name : "Unknown Location",
+                c.Status,
+                c.CreatedAt
+            })
+            .ToListAsync();
+        
+        return recentClaims.Select(c => new RecentClaimDto
+        {
+            ClaimId = c.Id.ToString(),
+            Location = c.LocationName,
+            Status = c.Status,
+            TimeAgo = GetTimeAgo(c.CreatedAt)
+        }).ToList();
+    }
 }
