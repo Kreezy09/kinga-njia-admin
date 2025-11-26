@@ -11,6 +11,61 @@ public class AnalyticsService : IAnalyticsService
         _context = context;
     }
 
+    public async Task<DashboardAnalyticsResponseDto> GetDashboardAnalyticsAsync()
+    {
+        var now = DateTime.UtcNow;
+        var today = now.Date;
+        var startOfMonth = new DateTime(now.Year, now.Month, 1);
+        var startOfLastMonth = startOfMonth.AddMonths(-1);
+        var endOfLastMonth = startOfMonth.AddDays(-1);
+
+        // Get current month claims
+        var currentMonthClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfMonth)
+            .ToListAsync();
+
+        // Get last month claims
+        var lastMonthClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfLastMonth && c.CreatedAt <= endOfLastMonth)
+            .ToListAsync();
+
+        // Get today's claims
+        var todayClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= today)
+            .ToListAsync();
+
+        // Calculate statistics
+        var analytics = new DashboardAnalyticsResponseDto
+        {
+            TotalClaims = CalculateStatistics(
+                currentMonthClaims.Count,
+                lastMonthClaims.Count
+            ),
+            VerifiedClaims = CalculateStatistics(
+                currentMonthClaims.Count(c => c.Status == ClaimStatus.Resolved),
+                lastMonthClaims.Count(c => c.Status == ClaimStatus.Resolved)
+            ),
+            PendingClaims = CalculateStatistics(
+                currentMonthClaims.Count(c => c.Status == ClaimStatus.Pending),
+                lastMonthClaims.Count(c => c.Status == ClaimStatus.Pending)
+            ),
+            RejectedClaims = CalculateStatistics(
+                currentMonthClaims.Count(c => c.Status == ClaimStatus.Rejected),
+                lastMonthClaims.Count(c => c.Status == ClaimStatus.Rejected)
+            ),
+            RecentClaims = await GetRecentClaimsAsync(),
+            TodayActivity = new TodayActivityDto
+            {
+                NewClaims = todayClaims.Count,
+                Processed = todayClaims.Count(c => c.Status == ClaimStatus.InProgress),
+                Verified = todayClaims.Count(c => c.Status == ClaimStatus.Resolved),
+                Rejected = todayClaims.Count(c => c.Status == ClaimStatus.Rejected)
+            }
+        };
+
+        return analytics;
+    }
+    
     private ClaimStatistics CalculateStatistics(int currentCount, int lastMonthCount)
     {
         if (lastMonthCount == 0)
