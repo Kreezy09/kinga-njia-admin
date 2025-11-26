@@ -12,32 +12,32 @@ public class AnalyticsService : IAnalyticsService
     }
 
     private ClaimStatistics CalculateStatistics(int currentCount, int lastMonthCount)
+    {
+        if (lastMonthCount == 0)
         {
-            if (lastMonthCount == 0)
-            {
-                return new ClaimStatistics
-                {
-                    Count = currentCount,
-                    ChangePercentage = currentCount > 0 ? "+100%" : "0%",
-                    ChangeType = currentCount > 0 ? ChangeType.Increase : ChangeType.NoChange
-                };
-            }
-
-            var percentageChange = ((double)(currentCount - lastMonthCount) / lastMonthCount) * 100;
-            var changeType = percentageChange > 0 ? ChangeType.Increase :
-                            percentageChange < 0 ? ChangeType.Decrease :
-                            ChangeType.NoChange;
-
-            var sign = percentageChange > 0 ? "+" : "";
-            var changePercentageStr = $"{sign}{percentageChange:F1}%";
-
             return new ClaimStatistics
             {
                 Count = currentCount,
-                ChangePercentage = changePercentageStr,
-                ChangeType = changeType
+                ChangePercentage = currentCount > 0 ? "+100%" : "0%",
+                ChangeType = currentCount > 0 ? ChangeType.Increase : ChangeType.NoChange
             };
         }
+
+        var percentageChange = ((double)(currentCount - lastMonthCount) / lastMonthCount) * 100;
+        var changeType = percentageChange > 0 ? ChangeType.Increase :
+                        percentageChange < 0 ? ChangeType.Decrease :
+                        ChangeType.NoChange;
+
+        var sign = percentageChange > 0 ? "+" : "";
+        var changePercentageStr = $"{sign}{percentageChange:F1}%";
+
+        return new ClaimStatistics
+        {
+            Count = currentCount,
+            ChangePercentage = changePercentageStr,
+            ChangeType = changeType
+        };
+    }
     private async Task<List<RecentClaimDto>> GetRecentClaimsAsync()
     {
         var recentClaims = await _context.Claims
@@ -60,5 +60,24 @@ public class AnalyticsService : IAnalyticsService
             Status = c.Status,
             TimeAgo = GetTimeAgo(c.CreatedAt)
         }).ToList();
+    }
+    private string GetTimeAgo(DateTime dateTime)
+    {
+        var timeSpan = DateTime.UtcNow - dateTime;
+
+        if (timeSpan.TotalSeconds < 60)
+            return $"{(int)timeSpan.TotalSeconds} sec ago";
+
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} min ago";
+
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours} hr ago";
+
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)timeSpan.TotalDays} day{((int)timeSpan.TotalDays != 1 ? "s" : "")} ago";
+
+        var months = (int)(timeSpan.TotalDays / 30);
+        return $"{months} month{(months != 1 ? "s" : "")} ago";
     }
 }
