@@ -104,10 +104,11 @@ public class ClaimService : IClaimService
         var claim = await _context.Claims.FindAsync(claimId);
         if (claim == null) return false;
 
-        claim.Type = claimUpdateDto.Type;
-        claim.Description = claimUpdateDto.Description;
-        claim.LocationId = claimUpdateDto.LocationId;
-        claim.UserId = claimUpdateDto.UserId;
+        // claim.Type = claimUpdateDto.Type;
+        // claim.Description = claimUpdateDto.Description;
+        // claim.LocationId = claimUpdateDto.LocationId;
+        // claim.UserId = claimUpdateDto.UserId;
+        claim.Status = claimUpdateDto.Status;
         claim.UpdatedAt = DateTime.UtcNow;
         _context.Claims.Update(claim);
         await _context.SaveChangesAsync();
