@@ -14,8 +14,8 @@ public class AnalyticsService : IAnalyticsService
     public async Task<DashboardAnalyticsResponseDto> GetDashboardAnalyticsAsync()
     {
         var now = DateTime.UtcNow;
-        var today = now.Date;
-        var startOfMonth = new DateTime(now.Year, now.Month, 1);
+        var today = DateTime.SpecifyKind(now.Date, DateTimeKind.Utc);
+        var startOfMonth = DateTime.SpecifyKind(new DateTime(now.Year, now.Month, 1), DateTimeKind.Utc);
         var startOfLastMonth = startOfMonth.AddMonths(-1);
         var endOfLastMonth = startOfMonth.AddDays(-1);
 
