@@ -127,3 +127,6 @@ TestResults/
 *.tmp
 *.temp
 ~$*
+
+#todos
+*.todos.md
