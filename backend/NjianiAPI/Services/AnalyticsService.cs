@@ -185,4 +185,50 @@ public class AnalyticsService : IAnalyticsService
 
         return analytics;
     }
+
+    private async Task<ClaimStatistics> CalculateVerificationRateAsync(DateTime startOfMonth, DateTime startofLastMonth, DateTime endOfLastMonth)
+    {
+        var currentMonthTotal = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startOfMonth);
+        
+        var currentMonthVerified = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startOfMonth && c.Status == ClaimStatus.Resolved);
+
+        var lastMonthTotal = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth);
+        
+        var lastMonthVerified = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth 
+            && c.Status == ClaimStatus.Resolved);
+
+        var currentRate = currentMonthTotal > 0 ? (double) currentMonthVerified / currentMonthTotal * 100 : 0;
+        var lastRate = lastMonthTotal > 0 ? (double) lastMonthVerified / lastMonthTotal * 100 : 0;
+
+        return new ClaimStatistics
+        {
+            Count = (int)Math.Round(currentRate),
+            ChangePercentage = CalculatePercentageChange(currentRate, lastRate),
+            ChangeType = DetermineChangeType(currentRate, lastRate)
+        };
+    }
+
+    private string CalculatePercentageChange(double current, double previous)
+    {
+        if (previous == 0)
+        {
+            return current > 0 ? "+100%" : "0%";
+        }
+
+        var percentageChange = ((current - previous) / previous) * 100;
+        var sign = percentageChange > 0 ? "+" : "";
+        return $"{sign}{percentageChange:F1}%";
+    }
+
+    private ChangeType DetermineChangeType(double current, double previous)
+    {
+        if (current > previous) return ChangeType.Increase;
+        if (current < previous) return ChangeType.Decrease;
+        return ChangeType.NoChange;
+    }
+      
 }
