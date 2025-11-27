@@ -277,6 +277,20 @@ public class AnalyticsService : IAnalyticsService
         return monthlyData;
     }
     
+    private async Task<List<SeverityDistributionDto>> GetClaimsBySeverityAsync()
+    {
+        var severityData = await _context.Claims
+            .Where(c => c.Severity != null)
+            .GroupBy(c => c.Severity)
+            .Select(g => new SeverityDistributionDto
+            {
+                Severity = g.Key.ToString() ?? "Unknown",
+                Count = g.Count()
+            })
+            .ToListAsync();
+        
+        return severityData;
+    }
     private string CalculatePercentageChange(double current, double previous)
     {
         if (previous == 0)
