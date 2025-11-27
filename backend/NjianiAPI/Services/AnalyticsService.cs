@@ -233,6 +233,29 @@ public class AnalyticsService : IAnalyticsService
         };
     }
     
+    private async Task<ProcessingTimeStats> CalculateAvgProcessingTimeAsync(DateTime startOfMonth, DateTime startofLastMonth, DateTime endOfLastMonth)
+    {
+        var currentMonthProcessed = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfMonth && c.Status == ClaimStatus.Resolved)
+            .ToListAsync();
+        var lastMonthProcessed = await _context.Claims
+            .Where(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth && c.Status == ClaimStatus.Resolved)
+            .ToListAsync();
+        
+        var currentAvg = currentMonthProcessed.Count > 0 ? 
+        currentMonthProcessed.Average(c => (c.UpdatedAt - c.CreatedAt).TotalHours) 
+        : 0;
+        var lastAvg = lastMonthProcessed.Count > 0 ? 
+        lastMonthProcessed.Average(c => (c.UpdatedAt - c.CreatedAt).TotalHours) 
+        : 0;
+
+        return new ProcessingTimeStats
+        {
+            AvgHrs = Math.Round(currentAvg, 2),
+            ChangePercentage = CalculatePercentageChange(currentAvg, lastAvg),
+            ChangeType = DetermineChangeType(lastAvg, currentAvg)
+        };
+    }
     private string CalculatePercentageChange(double current, double previous)
     {
         if (previous == 0)
