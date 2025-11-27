@@ -116,7 +116,7 @@ public class AnalyticsService : IAnalyticsService
             TimeAgo = GetTimeAgo(c.CreatedAt)
         }).ToList();
     }
-    private string GetTimeAgo(DateTime dateTime)
+    private static string GetTimeAgo(DateTime dateTime)
     {
         var timeSpan = DateTime.UtcNow - dateTime;
 
@@ -135,4 +135,225 @@ public class AnalyticsService : IAnalyticsService
         var months = (int)(timeSpan.TotalDays / 30);
         return $"{months} month{(months != 1 ? "s" : "")} ago";
     }
+
+    public async Task<AnalyticsDashboardResponseDto> GetAnalyticsDashboardAsync()
+    {
+        var now = DateTime.UtcNow;
+        var startOfMonth = DateTime.SpecifyKind(new DateTime(now.Year, now.Month, 1), DateTimeKind.Utc);
+        var startOfLastMonth = startOfMonth.AddMonths(-1);
+        var endOfLastMonth = startOfMonth.AddDays(-1);
+        var startOfWeek = DateTime.SpecifyKind(now.Date.AddDays(-(int)now.DayOfWeek), DateTimeKind.Utc);
+
+        // Get current month claims
+        var currentMonthClaims = await _context.Claims
+            .Include(c => c.Location)
+            .Where(c => c.CreatedAt >= startOfMonth)
+            .ToListAsync();
+
+        // Get last month claims
+        var lastMonthClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfLastMonth && c.CreatedAt <= endOfLastMonth)
+            .ToListAsync();
+
+        // Get this week's claims
+        var thisWeekClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfWeek)
+            .ToListAsync();
+
+        var analytics = new AnalyticsDashboardResponseDto
+        {
+            TotalClaims = CalculateStatistics(
+                currentMonthClaims.Count,
+                lastMonthClaims.Count
+            ),
+            VerificationRate = await CalculateVerificationRateAsync(startOfMonth, startOfLastMonth, endOfLastMonth),
+            ActiveUsersClaims = await CalculateActiveUsersClaimsAsync(startOfMonth, startOfLastMonth, endOfLastMonth),
+            AvgProcessingTime = await CalculateAvgProcessingTimeAsync(startOfMonth, startOfLastMonth, endOfLastMonth),
+            ClaimsOverTime = await GetClaimsOverTimeAsync(),
+            ClaimsBySeverity = await GetClaimsBySeverityAsync(),
+            TopClaimLocations = await GetTopClaimLocationsAsync(),
+            ProcessingSpeed = await GetProcessingSpeedAsync(),
+            ThisWeek = new WeekActivityDto
+            {
+                NewClaims = thisWeekClaims.Count,
+                Processed = thisWeekClaims.Count(c => c.Status == ClaimStatus.InProgress),
+                Verified = thisWeekClaims.Count(c => c.Status == ClaimStatus.Resolved),
+                Rejected = thisWeekClaims.Count(c => c.Status == ClaimStatus.Rejected),
+                Backlog = await _context.Claims.CountAsync(c => c.Status == ClaimStatus.Pending)
+            }
+        };
+
+        return analytics;
+    }
+
+    private async Task<ClaimStatistics> CalculateVerificationRateAsync(DateTime startOfMonth, DateTime startofLastMonth, DateTime endOfLastMonth)
+    {
+        var currentMonthTotal = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startOfMonth);
+        
+        var currentMonthVerified = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startOfMonth && c.Status == ClaimStatus.Resolved);
+
+        var lastMonthTotal = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth);
+        
+        var lastMonthVerified = await _context.Claims
+            .CountAsync(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth 
+            && c.Status == ClaimStatus.Resolved);
+
+        var currentRate = currentMonthTotal > 0 ? (double) currentMonthVerified / currentMonthTotal * 100 : 0;
+        var lastRate = lastMonthTotal > 0 ? (double) lastMonthVerified / lastMonthTotal * 100 : 0;
+
+        return new ClaimStatistics
+        {
+            Count = (int)Math.Round(currentRate),
+            ChangePercentage = CalculatePercentageChange(currentRate, lastRate),
+            ChangeType = DetermineChangeType(currentRate, lastRate)
+        };
+    }
+    
+    private async Task<ClaimStatistics> CalculateActiveUsersClaimsAsync(DateTime startOfMonth, DateTime startofLastMonth, DateTime endOfLastMonth)
+    {
+        var currentMonthActiveUsers = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfMonth)
+            .Select(c => c.UserId)
+            .Distinct()
+            .CountAsync();
+        var lastMonthActiveUsers = await _context.Claims
+            .Where(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth)
+            .Select(c => c.UserId)
+            .Distinct()
+            .CountAsync();
+
+        return new ClaimStatistics
+        {
+            Count = currentMonthActiveUsers,
+            ChangePercentage = CalculatePercentageChange(currentMonthActiveUsers, lastMonthActiveUsers),
+            ChangeType = DetermineChangeType(currentMonthActiveUsers, lastMonthActiveUsers)
+        };
+    }
+    
+    private async Task<ProcessingTimeStats> CalculateAvgProcessingTimeAsync(DateTime startOfMonth, DateTime startofLastMonth, DateTime endOfLastMonth)
+    {
+        var currentMonthProcessed = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfMonth && c.Status == ClaimStatus.Resolved)
+            .ToListAsync();
+        var lastMonthProcessed = await _context.Claims
+            .Where(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth && c.Status == ClaimStatus.Resolved)
+            .ToListAsync();
+        
+        var currentAvg = currentMonthProcessed.Count > 0 ? 
+        currentMonthProcessed.Average(c => (c.UpdatedAt - c.CreatedAt).TotalHours) 
+        : 0;
+        var lastAvg = lastMonthProcessed.Count > 0 ? 
+        lastMonthProcessed.Average(c => (c.UpdatedAt - c.CreatedAt).TotalHours) 
+        : 0;
+
+        return new ProcessingTimeStats
+        {
+            AvgHrs = Math.Round(currentAvg, 2),
+            ChangePercentage = CalculatePercentageChange(currentAvg, lastAvg),
+            ChangeType = DetermineChangeType(lastAvg, currentAvg)
+        };
+    }
+    
+    private async Task<List<MonthlyClaimDto>> GetClaimsOverTimeAsync()
+    {
+        var currentYear = DateTime.UtcNow.Year;
+
+        var monthlyData = await _context.Claims
+            .Where(c => c.CreatedAt.Year == currentYear)
+            .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
+            .Select(g => new 
+            {
+                Year = g.Key.Year,
+                Month = g.Key.Month,
+                Count = g.Count()
+            })
+            .OrderBy(m => m.Year)
+            .ThenBy(m => m.Month)
+            .ToListAsync();
+
+        return monthlyData.Select(m => new MonthlyClaimDto
+        {
+            Year = m.Year,
+            Month = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m.Month),
+            Count = m.Count
+        }).ToList();
+    }
+    
+    private async Task<List<SeverityDistributionDto>> GetClaimsBySeverityAsync()
+    {
+        var severityData = await _context.Claims
+            .Where(c => c.Severity != null)
+            .GroupBy(c => c.Severity)
+            .Select(g => new SeverityDistributionDto
+            {
+                Severity = g.Key.ToString() ?? "Unknown",
+                Count = g.Count()
+            })
+            .ToListAsync();
+        
+        return severityData;
+    }
+    
+    private async Task<List<LocationClaimDto>> GetTopClaimLocationsAsync()
+    {
+        var topLocations = await _context.Locations
+            .Select(l => new LocationClaimDto
+            {
+                Location = l.Name,
+                ClaimCount = l.Claims.Count()
+            })
+            .OrderByDescending(l => l.ClaimCount)
+            .Take(5)
+            .ToListAsync();
+        
+        return topLocations;
+    }
+
+    private async Task<ProcessingSpeedDto> GetProcessingSpeedAsync()
+    {
+        var processedClaims = await _context.Claims
+            .Where(c => c.Status == ClaimStatus.Resolved)
+            .Select(c => (c.UpdatedAt - c.CreatedAt).TotalHours)
+            .ToListAsync();
+        
+        if(processedClaims.Count <= 0)
+        {
+            return new ProcessingSpeedDto
+            {
+                AvgTimeHrs = 0,
+                FastestTimeHrs = 0,
+                SlowestTimeHrs = 0
+            };
+        }
+
+        return new ProcessingSpeedDto
+        {
+            AvgTimeHrs = Math.Round(processedClaims.Average(), 2),
+            FastestTimeHrs = Math.Round(processedClaims.Min(), 2),
+            SlowestTimeHrs = Math.Round(processedClaims.Max(), 2)
+        };
+    }
+
+    private string CalculatePercentageChange(double current, double previous)
+    {
+        if (previous == 0)
+        {
+            return current > 0 ? "+100%" : "0%";
+        }
+
+        var percentageChange = ((current - previous) / previous) * 100;
+        var sign = percentageChange > 0 ? "+" : "";
+        return $"{sign}{percentageChange:F1}%";
+    }
+
+    private ChangeType DetermineChangeType(double current, double previous)
+    {
+        if (current > previous) return ChangeType.Increase;
+        if (current < previous) return ChangeType.Decrease;
+        return ChangeType.NoChange;
+    }
+      
 }
