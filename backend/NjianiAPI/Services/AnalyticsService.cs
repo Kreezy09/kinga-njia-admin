@@ -256,6 +256,27 @@ public class AnalyticsService : IAnalyticsService
             ChangeType = DetermineChangeType(lastAvg, currentAvg)
         };
     }
+    
+    private async Task<List<MonthlyClaimDto>> GetClaimsOverTimeAsync()
+{
+    var currentYear = DateTime.UtcNow.Year;
+
+    var monthlyData = await _context.Claims
+        .Where(c => c.CreatedAt.Year == currentYear)
+        .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
+        .Select(g => new MonthlyClaimDto
+        {
+            Year = g.Key.Year,
+            Month = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(g.Key.Month),
+            Count = g.Count()
+        })
+        .OrderBy(m => m.Year)
+        .ThenBy(m => DateTime.ParseExact(m.Month, "MMMM", System.Globalization.CultureInfo.CurrentCulture).Month) //check later
+        .ToListAsync();
+
+    return monthlyData;
+}
+    
     private string CalculatePercentageChange(double current, double previous)
     {
         if (previous == 0)
