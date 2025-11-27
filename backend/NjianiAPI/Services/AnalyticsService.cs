@@ -264,17 +264,22 @@ public class AnalyticsService : IAnalyticsService
         var monthlyData = await _context.Claims
             .Where(c => c.CreatedAt.Year == currentYear)
             .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
-            .Select(g => new MonthlyClaimDto
+            .Select(g => new 
             {
                 Year = g.Key.Year,
-                Month = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(g.Key.Month),
+                Month = g.Key.Month,
                 Count = g.Count()
             })
             .OrderBy(m => m.Year)
-            .ThenBy(m => DateTime.ParseExact(m.Month, "MMMM", System.Globalization.CultureInfo.CurrentCulture).Month) //check later
+            .ThenBy(m => m.Month)
             .ToListAsync();
 
-        return monthlyData;
+        return monthlyData.Select(m => new MonthlyClaimDto
+        {
+            Year = m.Year,
+            Month = System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m.Month),
+            Count = m.Count
+        }).ToList();
     }
     
     private async Task<List<SeverityDistributionDto>> GetClaimsBySeverityAsync()
