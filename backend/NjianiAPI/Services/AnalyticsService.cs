@@ -211,7 +211,28 @@ public class AnalyticsService : IAnalyticsService
             ChangeType = DetermineChangeType(currentRate, lastRate)
         };
     }
+    
+    private async Task<ClaimStatistics> CalculateActiveUsersClaimsAsync(DateTime startOfMonth, DateTime startofLastMonth, DateTime endOfLastMonth)
+    {
+        var currentMonthActiveUsers = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfMonth)
+            .Select(c => c.UserId)
+            .Distinct()
+            .CountAsync();
+        var lastMonthActiveUsers = await _context.Claims
+            .Where(c => c.CreatedAt >= startofLastMonth && c.CreatedAt <= endOfLastMonth)
+            .Select(c => c.UserId)
+            .Distinct()
+            .CountAsync();
 
+        return new ClaimStatistics
+        {
+            Count = currentMonthActiveUsers,
+            ChangePercentage = CalculatePercentageChange(currentMonthActiveUsers, lastMonthActiveUsers),
+            ChangeType = DetermineChangeType(currentMonthActiveUsers, lastMonthActiveUsers)
+        };
+    }
+    
     private string CalculatePercentageChange(double current, double previous)
     {
         if (previous == 0)
