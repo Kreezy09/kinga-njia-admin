@@ -308,6 +308,31 @@ public class AnalyticsService : IAnalyticsService
         return topLocations;
     }
 
+    private async Task<ProcessingSpeedDto> GetProcessingSpeedAsync()
+    {
+        var processedClaims = await _context.Claims
+            .Where(c => c.Status == ClaimStatus.Resolved)
+            .Select(c => (c.UpdatedAt - c.CreatedAt).TotalHours)
+            .ToListAsync();
+        
+        if(processedClaims.Count <= 0)
+        {
+            return new ProcessingSpeedDto
+            {
+                AvgTimeHrs = 0,
+                FastestTimeHrs = 0,
+                SlowestTimeHrs = 0
+            };
+        }
+
+        return new ProcessingSpeedDto
+        {
+            AvgTimeHrs = Math.Round(processedClaims.Average(), 2),
+            FastestTimeHrs = Math.Round(processedClaims.Min(), 2),
+            SlowestTimeHrs = Math.Round(processedClaims.Max(), 2)
+        };
+    }
+
     private string CalculatePercentageChange(double current, double previous)
     {
         if (previous == 0)
