@@ -65,7 +65,11 @@ public class MonthlyClaimDto
     public int year { get; set; }
     public int Count { get; set; }
 }
-
+public class SeverityDistributionDto
+{
+    public string Severity { get; set; } = string.Empty;
+    public int Count { get; set; }
+}
 public class LocationClaimDto
 {
     public string Location { get; set; } = string.Empty;
