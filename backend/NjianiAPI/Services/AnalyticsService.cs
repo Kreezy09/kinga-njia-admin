@@ -295,18 +295,16 @@ public class AnalyticsService : IAnalyticsService
     private async Task<List<LocationClaimDto>> GetTopClaimLocationsAsync()
     {
         var topLocations = await _context.Claims
-            .Include(c => c.Location)
-            .Where(c => c.Location != null)
-            .GroupBy(c => c.Location!.Name)
+            .GroupBy(c => c.LocationId)
             .Select(g => new LocationClaimDto
             {
-                Location = g.Key,
+                Location = g.First().Location!.Name,
                 ClaimCount = g.Count()
             })
             .OrderByDescending(l => l.ClaimCount)
             .Take(5)
             .ToListAsync();
-        
+
         return topLocations;
     }
 
