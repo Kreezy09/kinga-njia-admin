@@ -291,6 +291,25 @@ public class AnalyticsService : IAnalyticsService
         
         return severityData;
     }
+    
+    private async Task<List<LocationClaimDto>> GetTopClaimLocationsAsync()
+    {
+        var topLocations = await _context.Claims
+            .Include(c => c.Location)
+            .Where(c => c.Location != null)
+            .GroupBy(c => c.Location!.Name)
+            .Select(g => new LocationClaimDto
+            {
+                Location = g.Key,
+                ClaimCount = g.Count()
+            })
+            .OrderByDescending(l => l.ClaimCount)
+            .Take(5)
+            .ToListAsync();
+        
+        return topLocations;
+    }
+
     private string CalculatePercentageChange(double current, double previous)
     {
         if (previous == 0)
