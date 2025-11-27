@@ -33,4 +33,23 @@ public class AnalyticsController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while retrieving analytics data" });
         }
     }
+
+    /// <summary>
+    /// Gets detailed analytics for the analytics tab including trends, processing times, and distributions
+    /// </summary>
+    /// <returns>Detailed analytics data</returns>
+    [HttpGet("detailed")]
+    public async Task<IActionResult> GetDetailedAnalytics()
+    {
+        try
+        {
+            var analytics = await _analyticsService.GetAnalyticsDashboardAsync();
+            return Ok(analytics);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error retrieving detailed analytics: {ex.Message}");
+            return StatusCode(500, new { message = "An error occurred while retrieving detailed analytics data" });
+        }
+    }
 }
