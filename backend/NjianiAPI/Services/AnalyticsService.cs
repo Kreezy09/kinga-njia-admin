@@ -135,4 +135,54 @@ public class AnalyticsService : IAnalyticsService
         var months = (int)(timeSpan.TotalDays / 30);
         return $"{months} month{(months != 1 ? "s" : "")} ago";
     }
+
+    public async Task<AnalyticsDashboardResponseDto> GetAnalyticsDashboardAsync()
+    {
+        var now = DateTime.UtcNow;
+        var startOfMonth = DateTime.SpecifyKind(new DateTime(now.Year, now.Month, 1), DateTimeKind.Utc);
+        var startOfLastMonth = startOfMonth.AddMonths(-1);
+        var endOfLastMonth = startOfMonth.AddDays(-1);
+        var startOfWeek = DateTime.SpecifyKind(now.Date.AddDays(-(int)now.DayOfWeek), DateTimeKind.Utc);
+
+        // Get current month claims
+        var currentMonthClaims = await _context.Claims
+            .Include(c => c.Location)
+            .Where(c => c.CreatedAt >= startOfMonth)
+            .ToListAsync();
+
+        // Get last month claims
+        var lastMonthClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfLastMonth && c.CreatedAt <= endOfLastMonth)
+            .ToListAsync();
+
+        // Get this week's claims
+        var thisWeekClaims = await _context.Claims
+            .Where(c => c.CreatedAt >= startOfWeek)
+            .ToListAsync();
+
+        var analytics = new AnalyticsDashboardResponseDto
+        {
+            TotalClaims = CalculateStatistics(
+                currentMonthClaims.Count,
+                lastMonthClaims.Count
+            ),
+            VerificationRate = await CalculateVerificationRateAsync(startOfMonth, startOfLastMonth, endOfLastMonth),
+            ActiveUsersClaims = await CalculateActiveUsersClaimsAsync(startOfMonth, startOfLastMonth, endOfLastMonth),
+            AvgProcessingTime = await CalculateAvgProcessingTimeAsync(startOfMonth, startOfLastMonth, endOfLastMonth),
+            ClaimsOverTime = await GetClaimsOverTimeAsync(),
+            ClaimsBySeverity = await GetClaimsBySeverityAsync(),
+            TopClaimLocations = await GetTopClaimLocationsAsync(),
+            ProcessingSpeed = await GetProcessingSpeedAsync(),
+            ThisWeek = new WeekActivityDto
+            {
+                NewClaims = thisWeekClaims.Count,
+                Processed = thisWeekClaims.Count(c => c.Status == ClaimStatus.InProgress),
+                Verified = thisWeekClaims.Count(c => c.Status == ClaimStatus.Resolved),
+                Rejected = thisWeekClaims.Count(c => c.Status == ClaimStatus.Rejected),
+                Backlog = await _context.Claims.CountAsync(c => c.Status == ClaimStatus.Pending)
+            }
+        };
+
+        return analytics;
+    }
 }
