@@ -116,7 +116,7 @@ public class AnalyticsService : IAnalyticsService
             TimeAgo = GetTimeAgo(c.CreatedAt)
         }).ToList();
     }
-    private string GetTimeAgo(DateTime dateTime)
+    private static string GetTimeAgo(DateTime dateTime)
     {
         var timeSpan = DateTime.UtcNow - dateTime;
 
